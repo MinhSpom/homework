@@ -1,8 +1,6 @@
 #include <iostream>
 #include <map>
 #include <vector>
-#include <queue>
-#include <tuple>
 
 #define TRADE_STATUS_ENUM_MAP(X)     \
     X(BID, 1, "bid more")            \

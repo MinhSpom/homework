@@ -1,213 +1,40 @@
-// #include <iostream>
-// #include <thread>
-// #include <vector>
-// #include <numeric>
-// #include <future>
-// #include "thread_pool.hpp"
-// int main() {
-//     const size_t num_threads = 4;
-//     std::vector<std::future<int>> futures;
-//     std::vector<int> data(10000, 1);
-
-//     thread_pool pool(num_threads);
-
-//     for (size_t i = 0; i < 10; ++i) {
-//         futures.push_back(pool.submit([&data] {
-//             return std::accumulate(data.begin(), data.end(), 0);
-//         }));
-//     }
-
-//     int sum = 0;
-//     for (auto& future : futures) {
-//         sum += future.get();
-//     }
-
-//     std::cout << "Sum: " << sum << std::endl;
-
-//     return 0;
-// }
-
 #include <iostream>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <chrono>
+#include <vector>
 #include "book.cpp"
-#define PASSIVE 0
-#define AGGRESSIVE 0
-#define CANCELED 0
+#include <memory>
 
 using json = nlohmann::json;
-// struct BOOK
-// {
-//     std::string symbol = "";
-//     json bid;
-//     json ask;
-//     std::map<float, unsigned int> bid_map;
-//     std::map<float, unsigned int> ask_map;
-// };
-
-// std::string compare(std::map<float, unsigned int> current, std::map<float, unsigned int>newcomer, bool is_buy)
-// {
-//     std::string ret ="";
-//     if(is_buy)
-//     {
-
-//     }
-//     else
-//     {
-
-//     }
-//     //find
-
-//     return;
-// }
-
-// int main()
-// {
-//     // Open the file for reading
-//     std::ifstream file("/home/vvu/test_folder/o/afile.txt");
-
-//     // Check if the file was opened successfully
-//     if (!file.is_open())
-//     {
-//         std::cerr << "Failed to open file!" << std::endl;
-//         return 1;
-//     }
-//     BOOK a;
-
-//     // Read the file line by line
-//     std::string line;
-//     while (std::getline(file, line))
-//     {
-//         // Parse each line as a JSON object
-
-//         json data = json::parse(line);
-//         // std::cout << line << std::endl;
-//         // Hey there should be an update
-//         if (data.contains("book"))
-//         {
-//             if (data["book"]["symbol"] != a.symbol)
-//             {
-//                 a.symbol = data["book"]["symbol"];
-//                 std::cout << "Here\n";
-//                 continue;
-//             }
-
-//             if (data["book"]["bid"] != a.bid && data["book"]["bid"] != NULL)
-//             {
-//                 std::cout << "Here2\n";
-//                 // a.bid = data["book"]["bid"];
-//                 auto bid_price_array = data["book"]["bid"].get<std::vector<json>>();
-//                 // unsigned int bid_quantity = data["book"]["bid"]["quantity"].get<int>();
-//                 for (auto i : bid_price_array)
-//                 {
-//                     std::cout << i << '\n';
-//                 }
-//                 // if (!a.bid_map.count(data["book"]["bid"]["price"]))
-//                 // {
-//                 //     //a.bid_map.insert(std::make_pair(bid_price, bid_quantity));
-//                 // }
-//                 // std::cout << a.bid << std::endl;
-//             }
-//             if (data["book"]["ask"] != a.ask && data["book"]["ask"] != NULL)
-//             {
-//                 a.bid = data["book"]["ask"];
-//                 auto ask_price_array = data["book"]["ask"].get<std::vector<json>>();
-//             }
-//         }
-//         else if (data.contains("trade"))
-//         {
-//         }
-//     }
-
-//     // Close the file
-//     file.close();
-
-//     return 0;
-// }
-
-// class BOOK
-// {
-//     std::string symbol;
-//     std::map<float, int> bid;
-//     // float prev_bid;
-//     std::map<float, int> ask;
-//     json rawContent;
-
-//     // float prev_ask;
-//     bool isTrade;
-//     BOOK(json rawContentBid, json rawContentAsk)
-//     {
-//     }
-
-// public:
-//     std::string diff(BOOK toDiff)
-//     {
-//         std::string _ret = "";
-//         float deltaAsk;
-//         float deltaBid;
-//         if (this->isTrade)
-//         {
-//             _ret += "AGRESSIVE";
-//         }
-//         else
-//         {
-//             _ret += "PASSIVE";
-//         }
-//         if (deltaAsk > 0)
-//         {
-//             // Have some stocks to trade ....
-//         }
-
-//         return _ret;
-//     }
-
-// private:
-//     std::map<float, int> mapDiff(std::map<float, int> sourceMap, std::map<float, int> toDiffMap)
-//     {
-//         std::map<float, int> _ret;
-//         std::map<float, int> _referencedMap = sourceMap;
-
-//         for (auto const &[key, val] : toDiffMap)
-//         {
-//             // price already exists...
-//             if (sourceMap.count(key) != 0)
-//             {
-//                 if (val != sourceMap[key])
-//                 {
-//                     // we have change
-//                     _ret.insert(std::make_pair(key, val - sourceMap[key]));
-//                     return _ret;
-//                 }
-//             }
-//             // we have some thing diff...
-//             else
-//             {
-//                 _ret.insert(std::make_pair(key, val));
-//                 return _ret;
-//             }
-//         }
-
-//         // loop from source side
-
-//         for (auto const &[key, val] : sourceMap)
-//         {
-//             if (toDiffMap.count(key) == 0)
-//             {
-//                 _ret.insert(std::make_pair(key, val));
-//                 return _ret;
-//             }
-//             else
-//             {
-//                 // nothing to do here
-//             }
-//         }
-
-//         return _ret;
-//     }
-// };
 
 static const std::map<std::string, int> trade_event = {std::make_pair("trade", 1)};
+
+std::vector<BOOK *> book_task;
+
+bool is_book_exists(std::string book)
+{
+    for (auto i : book_task)
+    {
+        if (i->get_book_name() == book)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void push_to_queue(std::string book, std::map<std::string, int> bid, std::map<std::string, int> ask)
+{
+    for (auto i : book_task)
+    {
+        if (i->get_book_name() == book)
+        {
+            i->push_queue(bid, ask);
+            return;
+        }
+    }
+}
 int main()
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -222,8 +49,6 @@ int main()
     std::map<std::string, int> bid_ref;
     std::map<std::string, int> ask_ref;
     bool got_trade = false;
-    std::ofstream _file("KING.json");
-    BOOK king("KING");
     while (std::getline(file, line))
     {
 
@@ -235,71 +60,65 @@ int main()
 
         if (_book != data.end())
         {
-            if (data["book"]["symbol"].get<std::string>() == "KING")
+            std::string book_name = data["book"]["symbol"].get<std::string>();
+            if (!is_book_exists(book_name))
             {
-                _file << data.dump() << std::endl;
-                std::cout << data["book"].dump() << std::endl;
-                if (!data["book"]["bid"].empty())
-                {
 
-                    _ret = "";
+                BOOK *b;
+                b = new BOOK(book_name);
+                book_task.push_back(b);
+            }
+            // if (book_name == "KING")
+            // {
+            //     std::cout << data["book"].dump() << std::endl;
+            // }
 
-                    std::map<std::string, int> bid;
-                    for (auto &[key, val] : data["book"]["bid"].items())
-                    {
-                        std::string bid_price = val["price"].dump();
-                        volatile int bid_quantity = val["quantity"].get<int>();
-                        bid_ref.insert((std::make_pair(bid_price, bid_quantity)));
-                    }
-                }
-                if (!data["book"]["ask"].empty())
-                {
+            if (!data["book"]["bid"].empty())
+            {
 
-                    std::map<std::string, int> ask;
-                    for (auto &[key, val] : data["book"]["ask"].items())
-                    {
-                        std::string ask_price = val["price"].dump();
-                        int ask_quantity = val["quantity"].get<int>();
-                        ask_ref.insert(std::make_pair(ask_price, ask_quantity));
-                    }
-
-                    king.push_queue(bid_ref, ask_ref);
-                    bid_ref.clear();
-                    ask_ref.clear();
-                }
-                for (auto &[key, val] : bid_ref)
+                for (auto &[key, val] : data["book"]["bid"].items())
                 {
-                    if (val == 0)
-                    {
-                        std::cout << "Here!!!";
-                    }
-                }
-                for (auto &[key, val] : ask_ref)
-                {
-                    if (val == 0)
-                    {
-                        std::cout << "Here!!!";
-                    }
+                    std::string bid_price = val["price"].dump();
+                    volatile int bid_quantity = val["quantity"].get<int>();
+                    bid_ref.insert((std::make_pair(bid_price, bid_quantity)));
                 }
             }
+            if (!data["book"]["ask"].empty())
+            {
+
+                for (auto &[key, val] : data["book"]["ask"].items())
+                {
+                    std::string ask_price = val["price"].dump();
+                    int ask_quantity = val["quantity"].get<int>();
+                    ask_ref.insert(std::make_pair(ask_price, ask_quantity));
+                }
+            }
+            push_to_queue(book_name, bid_ref, ask_ref);
+            bid_ref.clear();
+            ask_ref.clear();
+            // book_task[].push_queue(bid_ref, ask_ref);
         }
         else if (_isTrade)
         {
             if (data["trade"]["symbol"].get<std::string>() == "KING")
             {
-                got_trade = true;
-                _file << data.dump() << std::endl;
+                std::string book_name = data["trade"]["symbol"].get<std::string>();
+                push_to_queue(book_name, trade_event, {std::make_pair(data["trade"]["price"].dump(), data["trade"]["quantity"].get<int>())});
 
-                king.push_queue(trade_event, {std::make_pair(data["trade"]["price"].dump(),
-                                                             data["trade"]["quantity"].get<int>())});
+                // king.push_queue(trade_event, {std::make_pair(data["trade"]["price"].dump(),
+                //                                              data["trade"]["quantity"].get<int>())});
             }
         }
     }
-    std::cout << "======================\n";
+    for (auto i : book_task)
+    {
+        if (i->get_book_name() == "KING")
+        {
+            i->process_queue();
+        }
+    }
     auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(start - end);
-    king.process_queue();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Execution time: " << duration.count() << " microseconds" << std::endl;
-
     return 0;
 }
