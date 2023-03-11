@@ -31,7 +31,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <chrono>
-
+#include "book.cpp"
 #define PASSIVE 0
 #define AGGRESSIVE 0
 #define CANCELED 0
@@ -207,6 +207,7 @@ using json = nlohmann::json;
 //     }
 // };
 
+static const std::map<std::string, int> trade_event = {std::make_pair("trade", 1)};
 int main()
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -222,6 +223,7 @@ int main()
     std::map<std::string, int> ask_ref;
     bool got_trade = false;
     std::ofstream _file("KING.json");
+    BOOK king("KING");
     while (std::getline(file, line))
     {
 
@@ -236,122 +238,49 @@ int main()
             if (data["book"]["symbol"].get<std::string>() == "KING")
             {
                 _file << data.dump() << std::endl;
-                if (got_trade)
-                {
-                    _mode = "AGGRESSIVE";
-                    got_trade = false;
-                }
-                else
-                {
-                    _mode = "PASSIVE";
-                }
-                // std::cout << data["book"].dump() << std::endl;
+                std::cout << data["book"].dump() << std::endl;
                 if (!data["book"]["bid"].empty())
                 {
-                    // std::cout << "Got BUY" << std::endl;
-                    // std::cout << data["book"]["bid"] << std::endl;
+
                     _ret = "";
 
                     std::map<std::string, int> bid;
                     for (auto &[key, val] : data["book"]["bid"].items())
                     {
                         std::string bid_price = val["price"].dump();
-                        int bid_quantity = val["quantity"].get<int>();
-                        bid.insert((std::make_pair(bid_price, bid_quantity)));
-                        if (bid_ref.count(bid_price) > 0)
-                        {
-                            if (std::abs(bid_quantity - bid_ref[bid_price]) != 0)
-                            {
-                                //TODO: check _mode, if aggressive then should by buy not cancel
-                                if (bid_quantity > bid_ref[bid_price])
-                                {
-
-                                    // more bid, find delta
-                                    _ret += " BUY ";
-                                    _ret += std::to_string(std::abs(bid_quantity - bid_ref[bid_price]));
-                                    _ret += " @ ";
-                                    _ret += (bid_price);
-                                    std::cout << _mode + _ret << std::endl;
-                                }
-                                else
-                                {
-                                    // cancel case when new quantity less than old quantity
-                                    _ret += "CANCELD BUY ";
-                                    _ret += std::to_string(std::abs(bid_quantity - bid_ref[bid_price]));
-                                    _ret += " @ ";
-                                    _ret += (bid_price);
-                                    std::cout << _ret << std::endl;
-                                }
-                            }
-                            else
-                            {
-                                // nothing change
-                            }
-                        }
-                        else
-                        {
-                            _ret += " BUY ";
-                            _ret += std::to_string(bid_quantity);
-                            _ret += " @ ";
-                            _ret += (bid_price);
-                            std::cout << _mode + _ret << std::endl;
-                        }
+                        volatile int bid_quantity = val["quantity"].get<int>();
+                        bid_ref.insert((std::make_pair(bid_price, bid_quantity)));
                     }
-                    bid_ref = bid;
-                    // bid.clear();
                 }
                 if (!data["book"]["ask"].empty())
                 {
-                    // std::cout << "Got BUY" << std::endl;
-                    // std::cout << data["book"]["ask"] << std::endl;
-                    _ret = "";
 
                     std::map<std::string, int> ask;
                     for (auto &[key, val] : data["book"]["ask"].items())
                     {
                         std::string ask_price = val["price"].dump();
                         int ask_quantity = val["quantity"].get<int>();
-                        ask.insert((std::make_pair(ask_price, ask_quantity)));
-                        if (ask_ref.count(ask_price) > 0)
-                        {
-                            if (std::abs(ask_quantity - ask_ref[ask_price]) != 0)
-                            {
-                                if (ask_quantity > ask_ref[ask_price])
-                                {
-
-                                    // more ask, find delta
-                                    _ret += " SELL ";
-                                    _ret += std::to_string(std::abs(ask_quantity - ask_ref[ask_price]));
-                                    _ret += " @ ";
-                                    _ret += (ask_price);
-                                    std::cout << _mode + _ret << std::endl;
-                                }
-                                else
-                                {
-
-                                    // cancel case when new quantity less than old quantity
-                                    _ret += "CANCELD SELL ";
-                                    _ret += std::to_string(std::abs(ask_quantity - bid_ref[ask_price]));
-                                    _ret += " @ ";
-                                    _ret += (ask_price);
-                                    std::cout << _ret << std::endl;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            _ret += " SELL ";
-                            _ret += std::to_string(ask_quantity);
-                            _ret += " @ ";
-                            _ret += (ask_price);
-                            std::cout << _mode + _ret << std::endl;
-                        }
+                        ask_ref.insert(std::make_pair(ask_price, ask_quantity));
                     }
-                    ask_ref = ask;
-                    // bid.clear();
-                }
 
-                // ask.clear();
+                    king.push_queue(bid_ref, ask_ref);
+                    bid_ref.clear();
+                    ask_ref.clear();
+                }
+                for (auto &[key, val] : bid_ref)
+                {
+                    if (val == 0)
+                    {
+                        std::cout << "Here!!!";
+                    }
+                }
+                for (auto &[key, val] : ask_ref)
+                {
+                    if (val == 0)
+                    {
+                        std::cout << "Here!!!";
+                    }
+                }
             }
         }
         else if (_isTrade)
@@ -360,12 +289,16 @@ int main()
             {
                 got_trade = true;
                 _file << data.dump() << std::endl;
+
+                king.push_queue(trade_event, {std::make_pair(data["trade"]["price"].dump(),
+                                                             data["trade"]["quantity"].get<int>())});
             }
         }
     }
-
+    std::cout << "======================\n";
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(start - end);
+    king.process_queue();
     std::cout << "Execution time: " << duration.count() << " microseconds" << std::endl;
 
     return 0;
