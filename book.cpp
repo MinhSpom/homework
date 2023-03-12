@@ -1,7 +1,8 @@
 #include <iostream>
 #include <map>
 #include <vector>
-
+#include <functional>
+#include <fstream>
 #define TRADE_STATUS_ENUM_MAP(X)     \
     X(BID, 1, "bid more")            \
     X(ASK, 2, "ask more")            \
@@ -9,7 +10,8 @@
     X(MORE, 4, "More")               \
     X(REDUCED, 5, "REDUCED")         \
     X(NOTHING, 6, "Nothing changed") \
-    X(NEW, 7, "New added")
+    X(NEW, 7, "New added")           \
+    X(DEFAULT, 8, "Default")           \
 
 #define X(m, n, s) TRADE_##m##_C = n,
 typedef enum __attribute__((packed)) trade_status
@@ -38,6 +40,7 @@ private:
     std::map<std::string, int> delta;
     std::string buffer;
     bool _had_trade;
+    bool _is_done;
     int _had_trade_cnt = 0;
     std::string name;
     std::vector<std::pair<std::map<std::string, int>, std::map<std::string, int>>> queue;
@@ -47,7 +50,7 @@ private:
     {
         this->_had_trade = trade;
     }
-    void make_intention(trade_status_e status, trade_side_e side_order)
+    std::string make_intention(trade_status_e status, trade_side_e side_order)
     {
 
         std::string intention = "";
@@ -74,14 +77,14 @@ private:
         }
         else
         {
-            prefix = "AGGRESSIVE ";
+            prefix = "PASSIVE ";
             if (this->_had_trade_cnt > 1)
             {
                 this->_had_trade_cnt--;
             }
         }
         if (this->delta.empty())
-            return;
+            return intention;
 
         switch (status)
         {
@@ -103,8 +106,8 @@ private:
 
             break;
         case TRADE_NOTHING_C:
-            // there is no new book, this mean 2 trades happened in a row
-            // ASSUME SELL/BUY all
+            // there is no new price in book, 
+            // this mean 2 trades happened in a row or 1 trade 
             if (this->_had_trade_cnt > 1)
             {
                 std::string _price = this->delta.begin()->first;
@@ -144,7 +147,7 @@ private:
                 this->_had_trade_cnt = 0;
                 this->delta.clear();
             }
-            return;
+            return intention;
 
         case TRADE_NEW_C:
             prefix = "PASSIVE ";
@@ -154,6 +157,7 @@ private:
         }
         intention = prefix + side + std::to_string(this->delta.begin()->second) + " @ " + this->delta.begin()->first;
         std::cout << intention << std::endl;
+        return intention;
     }
     trade_status_e diff(std::map<std::string, int> source, std::map<std::string, int> target)
     {
@@ -217,7 +221,10 @@ public:
         this->bid_side = bid;
         this->ask_side = ask;
     }
-
+    bool is_process_done()
+    {
+        return this->_is_done;
+    }
     std::map<std::string, int> get_bid_side()
     {
         return this->bid_side;
@@ -237,7 +244,7 @@ public:
 
     void push_queue(std::map<std::string, int> bid, std::map<std::string, int> ask)
     {
-        // This pair can be bid/ask or trade/dump map
+        // This pair can be bid/ask or trade/trade content
         queue.push_back(std::make_pair(bid, ask));
     }
     void get_current_queue()
@@ -262,9 +269,10 @@ public:
     void process_queue()
     {
 
+        std::ofstream result("./log/"+this->get_book_name());
         for (auto &it : this->queue)
         {
-            trade_status_e trade_status;
+            trade_status_e trade_status = TRADE_DEFAULT_C;
             trade_side_e side = SIDE_NON_C;
             if (it.first.count("trade") < 1)
             { // bid side first
@@ -277,10 +285,6 @@ public:
                     trade_status = this->diff(this->ask_side, it.second);
                     side = SIDE_ASK_C;
                 }
-                if (trade_status == TRADE_NOTHING_C)
-                {
-                    std::cout << "error";
-                }
                 this->bid_side = it.first;
                 this->ask_side = it.second;
             }
@@ -290,7 +294,9 @@ public:
                 this->delta = it.second;
             }
 
-            this->make_intention(trade_status, side);
+            result << this->make_intention(trade_status, side) <<std::endl;
         }
+        result.close();
+        this->_is_done = true;
     }
 };
