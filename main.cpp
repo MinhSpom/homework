@@ -44,7 +44,7 @@ void push_to_queue(std::string book, std::map<std::string, int> bid, std::map<st
 int main()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    std::ifstream file("/home/vvu/test_folder/o/1.txt");
+    std::ifstream file("/home/vvu/test_folder/o/afile.txt");
     // Check if the file was opened successfully
     if (!file.is_open())
     {
@@ -74,11 +74,6 @@ int main()
                 b = new BOOK(book_name);
                 book_tasks.push_back(b);
             }
-            if (book_name == "CIMB")
-            {
-                result << data["book"].dump() << std::endl;
-            }
-
             if (!data["book"]["bid"].empty())
             {
 
@@ -108,10 +103,6 @@ int main()
         {
 
             std::string book_name = data["trade"]["symbol"].get<std::string>();
-            if (book_name == "CIMB")
-            {
-                result << data.dump() << std::endl;
-            }
             push_to_queue(book_name, trade_event, {std::make_pair(data["trade"]["price"].dump(), data["trade"]["quantity"].get<int>())});
 
             // king.push_queue(trade_event, {std::make_pair(data["trade"]["price"].dump(),
@@ -121,7 +112,7 @@ int main()
     // std::cout << book_tasks.size() << std::endl;
     // std::cout << std::thread::hardware_concurrency() << std::endl;
     // BS::thread_pool _pool;
-    thread_pool pool;
+    // thread_pool pool;
     for (auto i : book_tasks)
     {
         // _pool.push_task(&BOOK::process_queue, &i);
@@ -129,11 +120,11 @@ int main()
         std::cout << "*******************\n";
         std::cout << i->get_book_name() << std::endl;
         // if (i->get_book_name() == "CIMB")
-        // {
-        //     i->process_queue();
-        // }
-        pool.submit([i]()
-                    { i->process_queue(); });
+        {
+            i->process_queue();
+        }
+        // pool.submit([i]()
+        //             { i->process_queue(); });
         std::cout << "*******************\n";
     }
 
