@@ -47,7 +47,6 @@ private:
         this->delta_quantity.clear();
         this->delta_status.clear();
         this->delta_side.clear();
-        this->trade_quantity.clear();
     }
 
     // find diff, update price<->side
@@ -55,91 +54,198 @@ private:
     {
         std::map<std::string, TRADE_INTENTION> _ret;
         // bid side first
-        for (auto &[key, val] : new_bid)
+        std::string to_c = "";
+        for (auto &[price, quantity] : new_bid)
         {
             // new_bid has this price
-            if (this->bid_side.count(key) > 0)
+            if (this->bid_side.count(price) > 0)
             {
-                int delta = val - this->bid_side[key];
+                int delta = quantity - this->bid_side[price];
                 // bid more
                 if (delta > 0)
                 {
-                    _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_MORE));
-                    this->delta_side.insert(std::make_pair(key, TRADE_SIDE::BID_SIDE));
-                    this->delta_quantity.insert(std::make_pair(key, delta));
+                    if (this->trade_quantity.count(price) > 0)
+                    {
+                        // to_c += "AGGRESSIVE " + std::to_string(this->delta_quantity[price]) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        to_c += "PASSIVE BUY " + std::to_string(delta) + " @ " + price + "\n";
+                    }
                 }
                 else if (delta < 0)
                 {
-                    _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_REDUCE));
-                    this->delta_side.insert(std::make_pair(key, TRADE_SIDE::BID_SIDE));
-                    this->delta_quantity.insert(std::make_pair(key, abs(delta)));
+                    if (this->trade_quantity.count(price) > 0)
+                    {
+                        to_c += "AGGRESSIVE BUY" + std::to_string(this->trade_quantity[price]) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        to_c += "CANCELED BUY" + std::to_string(abs(delta)) + " @ " + price + "\n";
+                    }
+
+                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
+                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
+                    this->delta_quantity.insert(std::make_pair(price, abs(delta)));
                 }
                 else
                 {
-                    _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_EQUAL));
-                    this->delta_side.insert(std::make_pair(key, TRADE_SIDE::BID_SIDE));
-                    this->delta_quantity.insert(std::make_pair(key, delta));
+                    if (this->trade_quantity.count(price) > 0)
+                    {
+                        to_c += "AGGRESSIVE BUY" + std::to_string(this->trade_quantity[price] + quantity) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        //std::cout << "NO THING\n";
+                    }
+                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_EQUAL));
+                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
+                    this->delta_quantity.insert(std::make_pair(price, delta));
                 }
             }
             else
             {
-                _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_NEW));
-                this->delta_side.insert(std::make_pair(key, TRADE_SIDE::BID_SIDE));
-                this->delta_quantity.insert(std::make_pair(key, val));
+                if (this->trade_quantity.count(price) > 0)
+                {
+                    // std::cout << "BID:::SOME THING WRONG, new has, old doesnt, trade has\n";
+                    // std::cout <<price +  std::to_string(quantity) + "\n";
+                }
+
+                else
+                {
+
+                    to_c += "PASSIVE BUY " + std::to_string(quantity) + " @ " + price + "\n";
+                }
+
+                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_NEW));
+                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
+                this->delta_quantity.insert(std::make_pair(price, quantity));
             }
         }
-        for (auto const &[key, val] : this->bid_side)
+        for (auto const &[price, quantity] : this->bid_side)
         {
-            if (new_bid.count(key) < 1)
+            if (new_bid.count(price) < 1)
             {
-                _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_REDUCE));
-                this->delta_side.insert(std::make_pair(key, TRADE_SIDE::BID_SIDE));
-                this->delta_quantity.insert(std::make_pair(key, val));
+
+                if (this->trade_quantity.count(price) > 0)
+                {
+                    if (new_ask.count(price))
+                    {
+                        to_c += "AGGRESSIVE SELL " + std::to_string(quantity + new_ask[price]) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        to_c += "AGGRESSIVE SELL " + std::to_string(quantity + new_bid[price]) + " @ " + price + "\n";
+                    }
+                }
+                else
+                {
+                    to_c += "CANCELED BUY " + std::to_string(quantity) + " @ " + price + "\n";
+                }
+
+                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
+                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
+                this->delta_quantity.insert(std::make_pair(price, quantity));
             }
         }
         // ask side
-        for (auto &[key, val] : new_ask)
+        for (auto &[price, quantity] : new_ask)
         {
             // new_ask has this price
-            if (this->ask_side.count(key) > 0)
+            if (this->ask_side.count(price) > 0)
             {
-                int delta = val - this->ask_side[key];
+                int delta = quantity - this->ask_side[price];
                 // ask more
                 if (delta > 0)
                 {
-                    _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_MORE));
-                    this->delta_side.insert(std::make_pair(key, TRADE_SIDE::ASK_SIDE));
-                    this->delta_quantity.insert(std::make_pair(key, delta));
+                    if (this->trade_quantity.count(price) > 0)
+                    {
+                        // to_c += "AGGRESSIVE SELL" + std::to_string(quantity) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        to_c += "PASSIVE SELL " + std::to_string(delta) + " @ " + price + "\n";
+                    }
+
+                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_MORE));
+                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
+                    this->delta_quantity.insert(std::make_pair(price, delta));
                 }
                 else if (delta < 0)
                 {
-                    _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_REDUCE));
-                    this->delta_side.insert(std::make_pair(key, TRADE_SIDE::ASK_SIDE));
-                    this->delta_quantity.insert(std::make_pair(key, abs(delta)));
+                    if (this->trade_quantity.count(price) > 0)
+                    {
+                        to_c += "AGGRESSIVE SELL " + std::to_string(this->trade_quantity[price]) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        to_c += "CANCELED SELL " + std::to_string(abs(delta)) + " @ " + price + "\n";
+                    }
+                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
+                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
+                    this->delta_quantity.insert(std::make_pair(price, abs(delta)));
                 }
                 else
                 {
-                    _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_EQUAL));
-                    this->delta_side.insert(std::make_pair(key, TRADE_SIDE::ASK_SIDE));
-                    this->delta_quantity.insert(std::make_pair(key, delta));
+                    if (this->trade_quantity.count(price) > 0)
+                    {
+                        to_c += "AGGRESSIVE BUY " + std::to_string(this->trade_quantity[price] + quantity) + " @ " + price + "\n";
+                    }
+                    else
+                    {
+                        //std::cout << "NO THING\n";
+                    }
+                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_EQUAL));
+                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
+                    this->delta_quantity.insert(std::make_pair(price, delta));
                 }
             }
             else
             {
-                _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_NEW));
-                this->delta_quantity.insert(std::make_pair(key, val));
-                this->delta_side.insert(std::make_pair(key, TRADE_SIDE::ASK_SIDE));
+                if (this->trade_quantity.count(price) > 0)
+                {
+                    //check after ...
+                }
+
+                else
+                {
+                    to_c += "PASSIVE SELL " + std::to_string(quantity) + " @ " + price + "\n";
+                }
+                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_NEW));
+                this->delta_quantity.insert(std::make_pair(price, quantity));
+                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
             }
         }
-        for (auto const &[key, val] : this->ask_side)
+        for (auto const &[price, quantity] : this->ask_side)
         {
-            if (new_ask.count(key) < 1)
+            if (new_ask.count(price) < 1)
             {
-                _ret.insert(std::make_pair(key, TRADE_INTENTION::TRADE_REDUCE));
-                this->delta_side.insert(std::make_pair(key, TRADE_SIDE::ASK_SIDE));
-                this->delta_quantity.insert(std::make_pair(key, val));
+                if (this->trade_quantity.count(price) > 0)
+
+                {
+                    if (new_bid.count(price))
+                    {
+                        to_c += "AGGRESSIVE BUY " + std::to_string(quantity + new_bid[price]) + " @ " + price + "\n";
+
+                    }
+                    else
+                    {
+                        
+                    to_c += "AGGRESSIVE BUY " + std::to_string(quantity + new_ask[price]) + " @ " + price + "\n";
+                    }
+                    
+                }
+                else
+                {
+                    to_c += "CANCELED SELL" + std::to_string(quantity) + " @ " + price + "\n";
+                }
+                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
+                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
+                this->delta_quantity.insert(std::make_pair(price, quantity));
             }
         }
+        std::cout << to_c;
+        this->trade_quantity.clear();
         return _ret;
     }
     void build_intention(bool out)
@@ -205,7 +311,7 @@ private:
                 break;
             }
         }
-        std::cout << to;
+        // std::cout << to;
     }
 
 public:
@@ -278,14 +384,9 @@ public:
                 this->new_bid_side = it.first;
                 this->new_ask_side = it.second;
                 this->delta_status = this->diff(it.first, it.second);
-
-                if (!this->trade_quantity.empty())
-                {
-                    // trade before
-                }
-                this->build_intention(true);
-                this->bid_side = this->new_bid_side;
-                this->ask_side = this->new_ask_side;
+                // this->build_intention(true);
+                this->bid_side = it.first;
+                this->ask_side = it.second;
                 erase_delta();
             }
 
