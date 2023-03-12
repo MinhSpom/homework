@@ -24,12 +24,7 @@ class BOOK
 private:
     std::map<std::string, int> bid_side;
     std::map<std::string, int> ask_side;
-    std::map<std::string, int> new_bid_side;
-    std::map<std::string, int> new_ask_side;
     std::map<std::string, int> trade_quantity;
-    std::map<std::string, int> delta_quantity;
-    std::map<std::string, TRADE_INTENTION> delta_status;
-    std::map<std::string, TRADE_SIDE> delta_side;
     std::string buffer;
     bool _had_trade;
     bool _is_done;
@@ -42,17 +37,9 @@ private:
     {
         this->_had_trade = trade;
     }
-    void erase_delta()
-    {
-        this->delta_quantity.clear();
-        this->delta_status.clear();
-        this->delta_side.clear();
-    }
-
     // find diff, update price<->side
-    std::map<std::string, TRADE_INTENTION> diff(std::map<std::string, int> new_bid, std::map<std::string, int> new_ask)
+    void do_diff(std::map<std::string, int> new_bid, std::map<std::string, int> new_ask)
     {
-        std::map<std::string, TRADE_INTENTION> _ret;
         // bid side first
         std::string to_c = "";
         for (auto &[price, quantity] : new_bid)
@@ -84,9 +71,6 @@ private:
                         to_c += "CANCELED BUY" + std::to_string(abs(delta)) + " @ " + price + "\n";
                     }
 
-                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
-                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
-                    this->delta_quantity.insert(std::make_pair(price, abs(delta)));
                 }
                 else
                 {
@@ -98,9 +82,6 @@ private:
                     {
                         //std::cout << "NO THING\n";
                     }
-                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_EQUAL));
-                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
-                    this->delta_quantity.insert(std::make_pair(price, delta));
                 }
             }
             else
@@ -117,9 +98,6 @@ private:
                     to_c += "PASSIVE BUY " + std::to_string(quantity) + " @ " + price + "\n";
                 }
 
-                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_NEW));
-                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
-                this->delta_quantity.insert(std::make_pair(price, quantity));
             }
         }
         for (auto const &[price, quantity] : this->bid_side)
@@ -143,9 +121,6 @@ private:
                     to_c += "CANCELED BUY " + std::to_string(quantity) + " @ " + price + "\n";
                 }
 
-                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
-                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::BID_SIDE));
-                this->delta_quantity.insert(std::make_pair(price, quantity));
             }
         }
         // ask side
@@ -167,9 +142,6 @@ private:
                         to_c += "PASSIVE SELL " + std::to_string(delta) + " @ " + price + "\n";
                     }
 
-                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_MORE));
-                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
-                    this->delta_quantity.insert(std::make_pair(price, delta));
                 }
                 else if (delta < 0)
                 {
@@ -181,9 +153,6 @@ private:
                     {
                         to_c += "CANCELED SELL " + std::to_string(abs(delta)) + " @ " + price + "\n";
                     }
-                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
-                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
-                    this->delta_quantity.insert(std::make_pair(price, abs(delta)));
                 }
                 else
                 {
@@ -195,9 +164,6 @@ private:
                     {
                         //std::cout << "NO THING\n";
                     }
-                    _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_EQUAL));
-                    this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
-                    this->delta_quantity.insert(std::make_pair(price, delta));
                 }
             }
             else
@@ -211,9 +177,6 @@ private:
                 {
                     to_c += "PASSIVE SELL " + std::to_string(quantity) + " @ " + price + "\n";
                 }
-                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_NEW));
-                this->delta_quantity.insert(std::make_pair(price, quantity));
-                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
             }
         }
         for (auto const &[price, quantity] : this->ask_side)
@@ -239,79 +202,10 @@ private:
                 {
                     to_c += "CANCELED SELL" + std::to_string(quantity) + " @ " + price + "\n";
                 }
-                _ret.insert(std::make_pair(price, TRADE_INTENTION::TRADE_REDUCE));
-                this->delta_side.insert(std::make_pair(price, TRADE_SIDE::ASK_SIDE));
-                this->delta_quantity.insert(std::make_pair(price, quantity));
             }
         }
         std::cout << to_c;
         this->trade_quantity.clear();
-        return _ret;
-    }
-    void build_intention(bool out)
-    {
-        std::string _ret = "";
-        std::string to = "";
-        for (auto &[price, quantity] : this->trade_quantity)
-        {
-            // flush trade first
-        }
-        for (auto &[price, intention] : this->delta_status)
-        {
-
-            // if (this->new_bid_side[key] - this->bid_side[key])
-            std::string side = "";
-
-            if (delta_side[price] == TRADE_SIDE::ASK_SIDE)
-            {
-
-                side = "SELL ";
-            }
-            else if (delta_side[price] == TRADE_SIDE::BID_SIDE)
-            {
-                side = "BUY ";
-            }
-            switch (intention)
-            {
-            case TRADE_INTENTION::TRADE_MORE:
-                // new quantity > current, check if there is a trade before
-                if (this->trade_quantity.count(price) > 0)
-                {
-                    to += "AGGRESSIVE " + side + std::to_string(this->trade_quantity[price] + this->new_bid_side[price]) + " @ " + price + "\n";
-                }
-                else
-                {
-                    to += "PASSIVE " + side + std::to_string(this->delta_quantity[price]) + " @ " + price + "\n";
-                }
-                break;
-            case TRADE_INTENTION::TRADE_REDUCE:
-                // new quantity < current, check if there is a trade before
-                if (this->trade_quantity.count(price) > 0)
-                {
-                    to += "AGGRESSIVE " + side + std::to_string(this->trade_quantity[price] + this->new_bid_side[price]) + " @ " + price + "\n";
-                }
-                else
-                {
-
-                    to += "CANCELED " + side + std::to_string(this->delta_quantity[price]) + " @ " + price + "\n";
-                }
-                break;
-            case TRADE_INTENTION::TRADE_NEW:
-                to += "PASSIVE " + side + std::to_string(this->delta_quantity[price]) + " @ " + price + "\n";
-                break;
-            case TRADE_INTENTION::TRADE_EQUAL:
-                // new quantity == current, check if there is a trade before
-                if (this->trade_quantity.count(price) > 0)
-                {
-                    to += "AGGRESSIVE " + side + std::to_string(this->trade_quantity[price] + this->new_bid_side[price]) + " @ " + price + "\n";
-                }
-                break;
-
-            default:
-                break;
-            }
-        }
-        // std::cout << to;
     }
 
 public:
@@ -381,13 +275,9 @@ public:
                 // nothing, so this should be update book only
                 // find diff between new bid/ask vs current bid/ask
                 // assign new to old
-                this->new_bid_side = it.first;
-                this->new_ask_side = it.second;
-                this->delta_status = this->diff(it.first, it.second);
-                // this->build_intention(true);
+                this->do_diff(it.first, it.second);
                 this->bid_side = it.first;
                 this->ask_side = it.second;
-                erase_delta();
             }
 
             else /*Trade event here*/
