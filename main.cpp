@@ -3,26 +3,21 @@
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <vector>
-#include "book.cpp"
+#include "Book.cpp"
 #include <memory>
-#include <thread>
 #include "thread_pool.cpp"
+
 using json = nlohmann::json;
 
 static const std::map<std::string, int> trade_event = {std::make_pair("trade", 1)};
 
-std::vector<BOOK *> book_tasks;
-// std::vector<std::future<int>> futures;
-bool test(BOOK *a)
+std::vector<Book *> bookCollection;
+
+bool isBookExisted(std::string book)
 {
-    a->process_queue();
-    return true;
-}
-bool is_book_exists(std::string book)
-{
-    for (auto i : book_tasks)
+    for (auto i : bookCollection)
     {
-        if (i->get_book_name() == book)
+        if (i->getBookName() == book)
         {
             return true;
         }
@@ -30,13 +25,13 @@ bool is_book_exists(std::string book)
     return false;
 }
 
-void push_to_queue(std::string book, std::map<std::string, int> bid, std::map<std::string, int> ask)
+void pushBookToCollection(std::string book, std::map<std::string, int> bid, std::map<std::string, int> ask)
 {
-    for (auto i : book_tasks)
+    for (auto i : bookCollection)
     {
-        if (i->get_book_name() == book)
+        if (i->getBookName() == book)
         {
-            i->push_queue(bid, ask);
+            i->pushToQueue(bid, ask);
             return;
         }
     }
@@ -67,12 +62,12 @@ int main()
         if (_book != data.end())
         {
             std::string book_name = data["book"]["symbol"].get<std::string>();
-            if (!is_book_exists(book_name))
+            if (!isBookExisted(book_name))
             {
 
-                BOOK *b;
-                b = new BOOK(book_name);
-                book_tasks.push_back(b);
+                Book *b;
+                b = new Book(book_name);
+                bookCollection.push_back(b);
             }
             if (!data["book"]["bid"].empty())
             {
@@ -94,42 +89,29 @@ int main()
                     ask_ref.insert(std::make_pair(ask_price, ask_quantity));
                 }
             }
-            push_to_queue(book_name, bid_ref, ask_ref);
+            pushBookToCollection(book_name, bid_ref, ask_ref);
             bid_ref.clear();
             ask_ref.clear();
-            // book_tasks[].push_queue(bid_ref, ask_ref);
         }
         else if (_isTrade)
         {
 
             std::string book_name = data["trade"]["symbol"].get<std::string>();
-            push_to_queue(book_name, trade_event, {std::make_pair(data["trade"]["price"].dump(), data["trade"]["quantity"].get<int>())});
-
-            // king.push_queue(trade_event, {std::make_pair(data["trade"]["price"].dump(),
-            //                                              data["trade"]["quantity"].get<int>())});
+            pushBookToCollection(book_name, trade_event, {std::make_pair(data["trade"]["price"].dump(), data["trade"]["quantity"].get<int>())});
         }
     }
-    // std::cout << book_tasks.size() << std::endl;
-    // std::cout << std::thread::hardware_concurrency() << std::endl;
-    // BS::thread_pool _pool;
+    auto endProcessFile = std::chrono::high_resolution_clock::now();
+    auto durationProcessFile = std::chrono::duration_cast<std::chrono::milliseconds>(endProcessFile - start);
+    std::cout << "Process file time: " << durationProcessFile.count() << " microseconds" << std::endl;
     thread_pool pool;
-    for (auto i : book_tasks)
+    for (auto i : bookCollection)
     {
-        // _pool.push_task(&BOOK::process_queue, &i);
-        // (pool.execute(test, i));
-        // std::cout << "*******************\n";
-        // std::cout << i->get_book_name() << std::endl;
-        // if (i->get_book_name() == "CIMB")
-        // {
-        //     i->process_queue();
-        // }
         pool.submit([i]()
-                    { i->process_queue(); });
-        // std::cout << "*******************\n";
+                    { i->processQueue(); });
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Execution time: " << duration.count() << " microseconds" << std::endl;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Total time: " << duration.count() << " microseconds" << std::endl;
     return 0;
 }
