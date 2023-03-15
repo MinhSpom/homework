@@ -5,8 +5,8 @@
 #include <vector>
 #include "Book.cpp"
 #include <memory>
-#include "thread_pool.cpp"
 #include <unistd.h>
+#include "BS_thread_pool.hpp"
 using json = nlohmann::json;
 
 static const std::map<std::string, int> trade_event = {std::make_pair("trade", 1)};
@@ -109,15 +109,17 @@ int main(int argc, char *argv[])
     auto endProcessFile = std::chrono::high_resolution_clock::now();
     auto durationProcessFile = std::chrono::duration_cast<std::chrono::milliseconds>(endProcessFile - start);
     std::cout << "Process file time: " << durationProcessFile.count() << " milliseconds" << std::endl;
-    thread_pool pool;
-    for (auto i : bookCollection)
+    BS::thread_pool pool(std::thread::hardware_concurrency() - 1);
+    for (auto &i : bookCollection)
     {
-        pool.submit([i]()
-                    { i->processQueue(); });
+
+        auto futureRet = pool.submit([&i]()
+                                     { i->processQueue(); });
     }
+    pool.wait_for_tasks();
+
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Total time: " << duration.count() << " milliseconds" << std::endl;
-    sleep(1);
     return 0;
 }
