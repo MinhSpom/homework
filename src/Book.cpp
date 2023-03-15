@@ -254,6 +254,6 @@ public:
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        std::cout << "Execution time for " << this->getBookName() << " is: " << duration.count() << " microseconds" << std::endl;
+        std::cout << "Execution time for " << this->getBookName() << " is: " << duration.count() << " milliseconds" << std::endl;
     }
 };
