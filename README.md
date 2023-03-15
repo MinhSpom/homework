@@ -9,9 +9,19 @@
 clone this repo
 ```
 cd homework
-mkdir build & cd build
+mkdir build && cd build
 cmake ..
+make
 ```
+Binary files are generated in `/build/bin`
+
+Orderbook is main executable. Usage: `./orderbook [input_file_name]`
+
+Result files are generated in `/build/bin/result`
+
+Test: ./book_test
+
+
 
 ## Idea overview:
 
@@ -121,3 +131,5 @@ Execution time for REX is: 9 milliseconds
 Execution time for CFR is: 9 milliseconds
 Total time: 2234 milliseconds
 ```
+### Note:
+I did test with input file. There is no invalid json string, so I skip json validation.
