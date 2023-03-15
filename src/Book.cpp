@@ -46,7 +46,7 @@ public:
         // This pair can be bid/ask
         queue.push_back(std::make_pair(bid, ask));
     }
-        // This pair can be trade/trade content
+    // This pair can be trade/trade content
     void setTradeQuantity(std::map<std::string, int> tradeInfo)
     {
         if (this->tradeQuantity.count(tradeInfo.begin()->first) > 0)
@@ -100,7 +100,7 @@ public:
                 {
                     if (this->tradeQuantity.count(price) > 0)
                     {
-                        output += "AGGRESSIVE BUY " + std::to_string(this->tradeQuantity[price] + quantity) + " @ " + price + "\n";
+                        output += "AGGRESSIVE SELL " + std::to_string(this->tradeQuantity[price] + quantity) + " @ " + price + "\n";
                     }
                     else
                     {
@@ -135,7 +135,7 @@ public:
                     }
                     else
                     {
-                        output += "AGGRESSIVE BUY " + std::to_string(quantity + newBid[price]) + " @ " + price + "\n";
+                        output += "AGGRESSIVE SELL " + std::to_string(quantity + newBid[price]) + " @ " + price + "\n";
                     }
                 }
                 else
@@ -213,7 +213,7 @@ public:
                     else
                     {
 
-                        output += "AGGRESSIVE SELL " + std::to_string(quantity + newAsk[price]) + " @ " + price + "\n";
+                        output += "AGGRESSIVE BUY " + std::to_string(quantity + newAsk[price]) + " @ " + price + "\n";
                     }
                 }
                 else

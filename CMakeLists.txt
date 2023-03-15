@@ -6,6 +6,7 @@ project(orderbook VERSION 0.1.0)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CTEST_BINARY_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin/result)
 enable_testing()
 
 add_subdirectory(src)
